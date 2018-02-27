@@ -1,0 +1,70 @@
+{\rtf1\ansi\ansicpg936\cocoartf1561\cocoasubrtf200
+{\fonttbl\f0\fnil\fcharset0 Menlo-Regular;}
+{\colortbl;\red255\green255\blue255;\red27\green31\blue34;}
+{\*\expandedcolortbl;;\cssrgb\c14118\c16078\c18039;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww24400\viewh10300\viewkind0
+\deftab720
+\pard\pardeftab720\sl360\partightenfactor0
+
+\f0\fs30 \cf2 \expnd0\expndtw0\kerning0
+Author: Jiali Han\
+\
+Designs related to data Structures, algorithms and things that work/don't work:\
+\
+I. Description about the device driver\
+      Use 3 buffers to store data for input, output, echo process, all with finite size of 1024, \
+      input & output buffer could be reused with the mod computation (% BUF_SIZE);\
+ \
+ \
+II. Monitor implementation\
+     Use total 5 condition variables to ensure the correct sequence of interactions both with user application & hardware:\
+     writers: one user writing to the terminal, other user thread cannot write, num_writers will count the waiting writers;\
+     busy_write: to call the write data register, only after successfully received the transmit interrupt for each char, will signal;\
+     Readers: one user call the reading terminal will block other user reading at the same terminal;\
+     busy_echo:  when one echo procedure is doing, other writeTerminal calls will be blocked due to the echo priority;\
+     readable: only when there is one line entered, only there is something to read, could call the \'93readTerminal\'94 to read.\
+   \
+III. Mainly about the 4 functions related to User Thread API\
+\
+	1) WriteTerminal: Check that one and only one is writing at a time;\
+					  Check the same terminal is echoing or not, then to start write the first char;\
+					  For each char we write, must wait the busy_write condition var to signal, then could begin to write next char;\
+                      WriteTerminal blocks until all the writing is finished;\
+\
+    2) ReadTerminal:  Check the available reading condition;\
+                      Read from input_buffer with assigned length: buflen;\
+                      Signal reader, and increase the numbers of readable if a line of words is done.\
+                \
+    3) ReceiveInterrupt: \
+					   Read the read-date-register for one char;\
+                       Input char processing: mainly to change \'91r\'92 into \'92n\'92, the backspace \'91\\b\'92 and \'91\\177\'92;\
+                       Meanwhile do the echo char processing: replace \'91\\b\'92 into 3 chars \'93\\b \\b\'94, and corner case beep the echo;\
+                       Check condition and initiate the first echo character.\
+                        \
+	4) TransmitInterrupt:\
+                       Check is there any thing could be echo, put it in first priority;\
+                       Process the char from echo buffer to Terminal display;\
+					   If no echoing, check the condition to writeTerminal;\
+                       If end_writing current char, signal the busy_write condition var;\
+                       If end_echoing, signal the echo_status condition var, ending the whole echoing process.\
+                       \
+IV. Tests:\
+\
+	\cf0 \kerning1\expnd0\expndtw0 test1.c ~ test4.c is provided\
+\pard\pardeftab720\partightenfactor0
+\cf0 	test5.c: Write the first \'91\\b\'92 when empty in buffer, screen remains no character;\
+	test6.c  Write the first \'91\\n\'92 when starting a new empty line;\
+	test7.c  WriteTerminal \'91\\b\'92 char also delete an input char on screen;\
+    test8.c  Test Single ReadTerminal call after one writer call on one opening terminal;\
+    test9.c. Test two readers on different terminal;\
+    test10.c Test multiple(3) user thread of ReadTerminal call at the same terminal[1];\
+    Test11.c Test getting the statistics data of terminals, and test some error condition like:\
+             11.1 error initiate a terminal with -1\
+             11.2 write to a terminal that never exists\
+    Xterm Terminal keyboard type test:\
+    Revise the sleep time, then I could type on terminal. Type and try the backspace, del operation on keyboard, and it works well.\
+\
+\
+\
+\
+}
